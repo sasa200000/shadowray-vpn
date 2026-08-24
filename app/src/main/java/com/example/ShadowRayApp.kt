@@ -26,6 +26,13 @@ class ShadowRayApp : Application() {
         createNotificationChannels()
     }
 
+    fun onCoreLibraryLoaded() {
+        coreAvailable = true
+    }
+
+    var coreAvailable: Boolean = false
+        private set
+
     private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(

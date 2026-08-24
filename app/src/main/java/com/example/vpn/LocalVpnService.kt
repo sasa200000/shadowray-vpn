@@ -65,8 +65,9 @@ class LocalVpnService : VpnService() {
             Libv2ray.initCoreEnv(filesDir.absolutePath, "")
             coreEnvInitialized = true
             VpnManager.log("INFO", "XRAY", "Core env initialized. ${Libv2ray.checkVersionX()}")
-        } catch (e: Exception) {
-            VpnManager.log("WARN", "XRAY", "initCoreEnv failed: ${e.message}")
+        } catch (t: Throwable) {
+            coreEnvInitialized = false
+            VpnManager.log("ERROR", "XRAY", "initCoreEnv failed: ${t.message}")
         }
     }
 
@@ -133,6 +134,11 @@ class LocalVpnService : VpnService() {
 
                 // Initialize and start the real Xray core on this TUN fd
                 initCoreEnvIfNeeded()
+                if (!coreEnvInitialized) {
+                    VpnManager.onError("Xray engine failed to load on this device. Please reinstall the app.")
+                    disconnect()
+                    return@launch
+                }
 
                 coreController = Libv2ray.newCoreController(object : CoreCallbackHandler {
                     override fun startup(): Long {
@@ -152,8 +158,8 @@ class LocalVpnService : VpnService() {
                 try {
                     coreController!!.startLoop(jsonConfig, tunFd)
                     VpnManager.log("SUCCESS", "XRAY", "Core loop started with real outbound.")
-                } catch (e: Exception) {
-                    VpnManager.onError("Xray core failed to start: ${e.message}")
+                } catch (t: Throwable) {
+                    VpnManager.onError("Xray core failed to start: ${t.message}")
                     disconnect()
                     return@launch
                 }
