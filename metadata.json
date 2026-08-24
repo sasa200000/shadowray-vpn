@@ -1,0 +1,6 @@
+{
+  "name": "ShadowRay VPN",
+  "description": "A full-featured Android VPN and proxy client supporting VLESS, VMess, Trojan, Shadowsocks, WireGuard configs, subscriptions, ping latency testing, split tunneling, and traffic monitoring.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
