@@ -57,6 +57,12 @@ android {
     buildConfig = true
   }
   testOptions { unitTests { isIncludeAndroidResources = true } }
+
+  // Keep only 64-bit ARM to keep APK size manageable (~45MB instead of ~165MB)
+  ndk {
+    abiFilters.add("arm64-v8a")
+  }
+
   dependenciesInfo {
     includeInApk = false
     includeInBundle = true
