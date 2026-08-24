@@ -1,0 +1,72 @@
+name: Build ShadowRay APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK + NDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK
+        run: |
+          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --channel=0 --install "ndk;28.2.13676358"
+          echo "NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> $GITHUB_ENV
+
+      - name: Build libhevtun (socks5 tunnel native libs)
+        run: bash compile-hevtun.sh
+
+      - name: Download libv2ray.aar (Xray core)
+        run: |
+          mkdir -p V2rayNG/app/libs
+          LATEST_TAG=$(curl -s https://api.github.com/repos/2dust/AndroidLibXrayLite/releases/latest | grep -oP '"tag_name":\s*"\K[^"]+')
+          echo "Latest AndroidLibXrayLite tag: $LATEST_TAG"
+          curl -sL -o V2rayNG/app/libs/libv2ray.aar \
+            "https://github.com/2dust/AndroidLibXrayLite/releases/download/${LATEST_TAG}/libv2ray.aar"
+          ls -la V2rayNG/app/libs/
+
+      - name: Setup Gradle 9.5.1
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.1'
+
+      - name: Build universal debug APK (all ABIs, installable without signing setup)
+        working-directory: V2rayNG
+        run: |
+          echo "sdk.dir=${ANDROID_HOME}" > local.properties
+          gradle assemblePlaystoreDebug --no-daemon
+
+      - name: Collect APKs
+        run: |
+          find V2rayNG/app/build/outputs/apk -name '*.apk' | xargs ls -la || true
+          mkdir -p apks
+          UNIVERSAL=$(find V2rayNG/app/build/outputs/apk -name '*universal*.apk' | head -1)
+          if [ -n "$UNIVERSAL" ]; then cp "$UNIVERSAL" apks/ShadowRay-universal-debug.apk; fi
+          for f in $(find V2rayNG/app/build/outputs/apk -name '*.apk' ! -name '*universal*'); do
+            base=$(basename "$f")
+            cp "$f" "apks/ShadowRay-${base}"
+          done
+          ls -la apks/
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShadowRay-APKs
+          path: apks/*.apk
+          retention-days: 30
