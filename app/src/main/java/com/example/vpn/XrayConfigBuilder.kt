@@ -28,6 +28,22 @@ object XrayConfigBuilder {
             put("log", JSONObject().apply {
                 put("loglevel", "warning")
             })
+            // stats+policy: required so the app can read REAL traffic numbers from the core
+            put("stats", JSONObject())
+            put("policy", JSONObject().apply {
+                put("levels", JSONObject().apply {
+                    put("8", JSONObject().apply {
+                        put("handshake", 4)
+                        put("connIdle", 300)
+                        put("uplinkOnly", 1)
+                        put("downlinkOnly", 1)
+                    })
+                })
+                put("system", JSONObject().apply {
+                    put("statsOutboundUplink", true)
+                    put("statsOutboundDownlink", true)
+                })
+            })
             put("inbounds", JSONArray().put(JSONObject().apply {
                 put("tag", "tun")
                 put("protocol", "tun")
@@ -47,7 +63,22 @@ object XrayConfigBuilder {
                     put("tag", "direct")
                     put("protocol", "freedom")
                 })
+                .put(JSONObject().apply { // block outbound
+                    put("tag", "block")
+                    put("protocol", "blackhole")
+                })
             )
+            // Route private/LAN ranges directly (never through the proxy), everything else -> proxy
+            put("routing", JSONObject().apply {
+                put("domainStrategy", "AsIs")
+                put("rules", JSONArray()
+                    .put(JSONObject().apply {
+                        put("type", "field")
+                        put("ip", JSONArray().put("geoip:private"))
+                        put("outboundTag", "direct")
+                    })
+                )
+            })
         }
         return root.toString()
     }

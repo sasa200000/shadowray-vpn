@@ -115,6 +115,16 @@ class LocalVpnService : VpnService() {
                 // Route all traffic through the tunnel
                 builder.addRoute("0.0.0.0", 0)
 
+                // CRITICAL: exclude our own app from the VPN, otherwise the Xray core's own
+                // outbound connection to the proxy server loops back into the TUN device and
+                // the whole phone's network stalls (v2rayNG does exactly this).
+                try {
+                    builder.addDisallowedApplication(packageName)
+                    VpnManager.log("INFO", "ROUTING", "Self package excluded from VPN: $packageName")
+                } catch (e: Exception) {
+                    VpnManager.log("WARN", "ROUTING", "Could not exclude self: ${e.message}")
+                }
+
                 // Split tunneling per app (kernel-level filtering by Android)
                 for (pkg in bypassPackages) {
                     try {
