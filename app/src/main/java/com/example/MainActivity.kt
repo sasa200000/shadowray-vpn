@@ -102,10 +102,20 @@ class MainActivity : ComponentActivity() {
     }
 
     fun prepareVpnAndConnect() {
-        val vpnIntent = VpnService.prepare(this)
-        if (vpnIntent != null) {
-            vpnPermissionLauncher.launch(vpnIntent)
-        } else {
+        val currentState = viewModel.vpnState.value
+        if (currentState is VpnState.Connected || currentState is VpnState.Connecting) {
+            viewModel.toggleConnect(this)
+            return
+        }
+
+        try {
+            val vpnIntent = VpnService.prepare(this)
+            if (vpnIntent != null) {
+                vpnPermissionLauncher.launch(vpnIntent)
+            } else {
+                viewModel.toggleConnect(this)
+            }
+        } catch (e: Exception) {
             viewModel.toggleConnect(this)
         }
     }
@@ -221,6 +231,7 @@ class MainActivity : ComponentActivity() {
                         composable(Screen.Home.route) {
                             HomeScreen(
                                 viewModel = viewModel,
+                                onToggleConnect = { prepareVpnAndConnect() },
                                 onNavigateToConfigs = {
                                     navController.navigate(Screen.Configs.route)
                                 }

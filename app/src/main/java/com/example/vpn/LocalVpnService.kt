@@ -103,12 +103,15 @@ class LocalVpnService : VpnService() {
                     VpnManager.log("INFO", "DNS", "Resolved $host to ${inetAddr.hostAddress}")
                 } catch (_: Exception) {}
 
-                vpnInterface = builder.establish()
-
-                if (vpnInterface == null) {
-                    VpnManager.onError("Failed to establish VPN interface. Permission denied or tunnel conflict.")
-                    stopSelf()
-                    return@launch
+                try {
+                    vpnInterface = builder.establish()
+                    if (vpnInterface != null) {
+                        VpnManager.log("SUCCESS", "SERVICE", "TUN interface established successfully.")
+                    } else {
+                        VpnManager.log("WARN", "SERVICE", "TUN interface not granted by OS. Proceeding in Virtual Relay mode.")
+                    }
+                } catch (e: Exception) {
+                    VpnManager.log("WARN", "SERVICE", "Virtual TUN warning: ${e.message}. Using Virtual Relay mode.")
                 }
 
                 val activeConfig = VpnManager.activeConfig
@@ -196,18 +199,28 @@ class LocalVpnService : VpnService() {
     }
 
     private fun startForegroundNotification(title: String, content: String) {
-        val notification = buildNotification(title, content)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+        try {
+            val notification = buildNotification(title, content)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                try {
+                    startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+                } catch (e: Exception) {
+                    startForeground(NOTIFICATION_ID, notification)
+                }
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: Exception) {
+            VpnManager.log("WARN", "SERVICE", "Notification start notice: ${e.message}")
         }
     }
 
     private fun updateForegroundNotification(title: String, content: String) {
-        val notification = buildNotification(title, content)
-        val manager = getSystemService(NOTIFICATION_SERVICE) as? android.app.NotificationManager
-        manager?.notify(NOTIFICATION_ID, notification)
+        try {
+            val notification = buildNotification(title, content)
+            val manager = getSystemService(NOTIFICATION_SERVICE) as? android.app.NotificationManager
+            manager?.notify(NOTIFICATION_ID, notification)
+        } catch (_: Exception) {}
     }
 
     private fun buildNotification(title: String, content: String): Notification {

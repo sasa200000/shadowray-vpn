@@ -179,8 +179,6 @@ fun ConnectPowerButton(
                         )
                     )
                     .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
                         onClick = onToggle
                     )
                     .testTag("vpn_power_button")

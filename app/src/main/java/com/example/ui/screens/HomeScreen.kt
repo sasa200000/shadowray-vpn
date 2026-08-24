@@ -66,6 +66,7 @@ import com.example.util.LocalizationHelper
 @Composable
 fun HomeScreen(
     viewModel: VpnViewModel,
+    onToggleConnect: () -> Unit,
     onNavigateToConfigs: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -157,7 +158,7 @@ fun HomeScreen(
         ConnectPowerButton(
             vpnState = vpnState,
             language = settings.language,
-            onToggle = { viewModel.toggleConnect(context) },
+            onToggle = onToggleConnect,
             modifier = Modifier.padding(vertical = 8.dp)
         )
 

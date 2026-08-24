@@ -1,71 +1,22 @@
 <div align="center">
-
-# 🛡️ ShadowRay VPN
-
-**A full-featured Android VPN & proxy client built with Kotlin + Jetpack Compose**
-
-Supports VLESS · VMess · Trojan · Shadowsocks · WireGuard
-
-[![Platform](https://img.shields.io/badge/platform-Android-green.svg)](https://android.com)
-[![Kotlin](https://img.shields.io/badge/language-Kotlin-purple.svg)](https://kotlinlang.org)
-[![UI](https://img.shields.io/badge/UI-Jetpack%20Compose-blue.svg)](https://developer.android.com/compose)
-
+<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
 </div>
 
----
+# Run and deploy your AI Studio app
 
-## ✨ Features
+This contains everything you need to run your app locally.
 
-- 🔌 **Multiple protocols** — VLESS, VMess, Trojan, Shadowsocks, WireGuard
-- 🔗 **Config import** — paste links or scan QR codes
-- 📡 **Subscriptions** — auto-refresh server lists from subscription URLs
-- 🏓 **Ping testing** — measure latency of each config
-- 📱 **Split tunneling** — choose which apps use the VPN
-- 📊 **Traffic monitoring** — live speed graph and stats
-- 📝 **Connection logs**
+View your app in AI Studio: https://ai.studio/apps/9984e99f-b2a0-4c30-b3c1-abb0076ed14d
 
-## 🚀 Getting Started
+## Run Locally
 
-### Prerequisites
+**Prerequisites:**  [Android Studio](https://developer.android.com/studio)
 
-- [Android Studio](https://developer.android.com/studio) (latest version recommended)
-- Android 7.0+ device or emulator (minSdk 24)
 
-### Build & Run
-
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/haha90000/shadowray-vpn.git
-   ```
-2. Open the project in Android Studio (**File → Open**)
-3. If your build uses the Gemini API, create a `.env` file in the project root:
-   ```
-   GEMINI_API_KEY=your_key_here
-   ```
-   (see `.env.example`)
-4. Run the app on an emulator or physical device ▶️
-
-> 💡 **Note:** If you hit a signing error during release builds, remove this line
-> from `app/build.gradle.kts`: `signingConfig = signingConfigs.getByName("debugConfig")`
-
-## 🧱 Project Structure
-
-```
-app/src/main/java/com/example/
-├── data/          # Room database, repositories, preferences
-├── model/         # Data models (ProxyConfig, VpnState, ...)
-├── parser/        # Config parsing, ping tester, QR utils
-├── ui/            # Compose screens, components, theme
-├── viewmodel/     # VpnViewModel
-├── vpn/           # VpnManager + LocalVpnService
-└── util/          # Helpers (formatters, localization, installed apps)
-```
-
-## 📦 Download APK
-
-Grab the latest APK from the [Releases](../../releases) page, or build it yourself
-with `./gradlew assembleDebug`.
-
-## 📄 License
-
-This project was generated with [Google AI Studio](https://aistudio.google.com).
+1. Open Android Studio
+2. Select **Open** and choose the directory containing this project
+3. Allow Android Studio to fix any incompatibilities as it imports the project.
+4. Create a file named `.env` in the project directory and set `GEMINI_API_KEY` in that file to your Gemini API key (see `.env.example` for an example)
+5. Remove this line from the app's `build.gradle.kts` file: `signingConfig = signingConfigs.getByName("debugConfig")`
+6. Run the app on an emulator or physical device
+7. If you have already published your app in AI Studio, please [request upload key reset](https://support.google.com/googleplay/android-developer/answer/9842756#zippy=%2Crequest-an-upload-key-reset) in Google Play Console.
