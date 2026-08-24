@@ -43,6 +43,7 @@ import com.example.ui.theme.ElectricEmerald
 import com.example.ui.theme.NeonCyan
 import com.example.ui.theme.StatusConnecting
 import com.example.ui.theme.StatusDisconnected
+import com.example.ui.theme.StatusError
 import com.example.util.LocalizationHelper
 
 @Composable
@@ -54,6 +55,7 @@ fun ConnectPowerButton(
 ) {
     val isConnected = vpnState is VpnState.Connected
     val isConnecting = vpnState is VpnState.Connecting || vpnState is VpnState.Disconnecting
+    val isError = vpnState is VpnState.Error
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse_animation")
 
@@ -90,24 +92,28 @@ fun ConnectPowerButton(
     val activeColor = when {
         isConnected -> ElectricEmerald
         isConnecting -> StatusConnecting
+        isError -> StatusError
         else -> NeonCyan
     }
 
     val glowColor = when {
         isConnected -> Color(0xFF00E676)
         isConnecting -> Color(0xFFFFD600)
+        isError -> Color(0xFFFF3D3D)
         else -> Color(0xFF00E5FF)
     }
 
     val buttonText = when {
         isConnected -> LocalizationHelper.getString("tap_to_disconnect", language)
         isConnecting -> LocalizationHelper.getString("status_connecting", language)
+        isError -> LocalizationHelper.getString("tap_to_connect", language)
         else -> LocalizationHelper.getString("tap_to_connect", language)
     }
 
     val statusSubtitle = when {
         isConnected -> LocalizationHelper.getString("status_connected", language)
         isConnecting -> LocalizationHelper.getString("status_connecting", language)
+        isError -> (vpnState as VpnState.Error).message.take(60)
         else -> LocalizationHelper.getString("status_disconnected", language)
     }
 
