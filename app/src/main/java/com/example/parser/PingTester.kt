@@ -9,6 +9,24 @@ import java.net.Socket
 object PingTester {
 
     /**
+     * REAL latency test through the proxy outbound via Xray core.
+     * Returns round-trip ms or -1 on failure.
+     */
+    suspend fun testRealPing(config: com.example.model.ProxyConfig): Long {
+        return withContext(Dispatchers.IO) {
+            try {
+                val json = com.example.vpn.XrayConfigBuilder.build(config)
+                libv2ray.Libv2ray.measureOutboundDelay(
+                    json,
+                    "https://www.google.com/generate_204"
+                )
+            } catch (e: Exception) {
+                -1L
+            }
+        }
+    }
+
+    /**
      * Performs a TCP handshake test to measure latency in milliseconds.
      */
     suspend fun testTcpPing(host: String, port: Int, timeoutMs: Int = 3000): Pair<Long, PingStatus> {

@@ -10,6 +10,7 @@ import android.os.ParcelFileDescriptor
 import androidx.core.app.NotificationCompat
 import com.example.MainActivity
 import com.example.model.PingStatus
+import com.example.model.ProxyConfig
 import com.example.model.VpnStats
 import com.example.parser.PingTester
 import com.example.util.Formatters
@@ -20,13 +21,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.net.InetAddress
-import kotlin.random.Random
+import libv2ray.CoreCallbackHandler
+import libv2ray.CoreController
+import libv2ray.Libv2ray
 
 class LocalVpnService : VpnService() {
 
     private var vpnInterface: ParcelFileDescriptor? = null
     private var serviceJob: Job? = null
     private val scope = CoroutineScope(Dispatchers.IO)
+
+    private var coreController: CoreController? = null
+    private var coreEnvInitialized = false
 
     private var sessionStartTime = 0L
     private var totalUpBytes = 0L
@@ -53,6 +59,17 @@ class LocalVpnService : VpnService() {
         return START_NOT_STICKY
     }
 
+    private fun initCoreEnvIfNeeded() {
+        if (coreEnvInitialized) return
+        try {
+            Libv2ray.initCoreEnv(filesDir.absolutePath, "")
+            coreEnvInitialized = true
+            VpnManager.log("INFO", "XRAY", "Core env initialized. ${Libv2ray.checkVersionX()}")
+        } catch (e: Exception) {
+            VpnManager.log("WARN", "XRAY", "initCoreEnv failed: ${e.message}")
+        }
+    }
+
     private fun connect(
         configName: String,
         host: String,
@@ -70,7 +87,17 @@ class LocalVpnService : VpnService() {
 
         serviceJob = scope.launch {
             try {
-                VpnManager.log("INFO", "SERVICE", "Configuring virtual TUN interface...")
+                VpnManager.log("INFO", "SERVICE", "Configuring TUN interface...")
+
+                val activeConfig: ProxyConfig = VpnManager.activeConfig
+                    ?: run {
+                        VpnManager.onError("No active configuration found.")
+                        disconnect()
+                        return@launch
+                    }
+
+                // Build the real Xray JSON config BEFORE touching the TUN device.
+                val jsonConfig = XrayConfigBuilder.build(activeConfig)
 
                 val builder = Builder()
                     .setSession("ShadowRay: $configName")
@@ -84,100 +111,136 @@ class LocalVpnService : VpnService() {
                     builder.addDnsServer("1.1.1.1")
                 }
 
-                // Add route for all traffic (0.0.0.0/0)
+                // Route all traffic through the tunnel
                 builder.addRoute("0.0.0.0", 0)
 
-                // Split tunneling per app
+                // Split tunneling per app (kernel-level filtering by Android)
                 for (pkg in bypassPackages) {
                     try {
                         builder.addDisallowedApplication(pkg)
                         VpnManager.log("INFO", "ROUTING", "Bypassing package from VPN: $pkg")
-                    } catch (e: Exception) {
-                        // Ignore if app not found
-                    }
+                    } catch (_: Exception) {}
                 }
 
-                // Protect socket to host if needed
-                try {
-                    val inetAddr = InetAddress.getByName(host)
-                    VpnManager.log("INFO", "DNS", "Resolved $host to ${inetAddr.hostAddress}")
-                } catch (_: Exception) {}
+                vpnInterface = builder.establish()
+                if (vpnInterface == null) {
+                    VpnManager.onError("Failed to establish VPN interface. Permission denied or another VPN is active.")
+                    stopSelf()
+                    return@launch
+                }
+                val tunFd = vpnInterface!!.fd
+                VpnManager.log("SUCCESS", "SERVICE", "TUN established. fd=$tunFd")
+
+                // Initialize and start the real Xray core on this TUN fd
+                initCoreEnvIfNeeded()
+
+                coreController = Libv2ray.newCoreController(object : CoreCallbackHandler {
+                    override fun startup(): Long {
+                        VpnManager.log("INFO", "XRAY", "Core startup callback.")
+                        return 0L
+                    }
+                    override fun shutdown(): Long {
+                        VpnManager.log("INFO", "XRAY", "Core shutdown callback.")
+                        return 0L
+                    }
+                    override fun onEmitStatus(id: Long, message: String?): Long {
+                        message?.let { VpnManager.log("INFO", "XRAY-LOG", it.take(200)) }
+                        return 0L
+                    }
+                })
 
                 try {
-                    vpnInterface = builder.establish()
-                    if (vpnInterface != null) {
-                        VpnManager.log("SUCCESS", "SERVICE", "TUN interface established successfully.")
-                    } else {
-                        VpnManager.log("WARN", "SERVICE", "TUN interface not granted by OS. Proceeding in Virtual Relay mode.")
-                    }
+                    coreController!!.startLoop(jsonConfig, tunFd)
+                    VpnManager.log("SUCCESS", "XRAY", "Core loop started with real outbound.")
                 } catch (e: Exception) {
-                    VpnManager.log("WARN", "SERVICE", "Virtual TUN warning: ${e.message}. Using Virtual Relay mode.")
+                    VpnManager.onError("Xray core failed to start: ${e.message}")
+                    disconnect()
+                    return@launch
                 }
 
-                val activeConfig = VpnManager.activeConfig
-                if (activeConfig != null) {
-                    // Test ping to determine latency
-                    val (pingMs, _) = PingTester.testTcpPing(host, port, 3000)
-                    val country = when {
-                        host.contains(".de") || host.contains("germany") -> "Germany"
-                        host.contains(".nl") || host.contains("netherlands") -> "Netherlands"
-                        host.contains(".fi") || host.contains("finland") -> "Finland"
-                        host.contains(".fr") || host.contains("france") -> "France"
-                        host.contains(".us") || host.contains("usa") -> "United States"
-                        host.contains(".uk") || host.contains("london") -> "United Kingdom"
-                        host.contains(".tr") || host.contains("turkey") -> "Turkey"
-                        host.contains(".sg") || host.contains("singapore") -> "Singapore"
-                        else -> "Direct Tunnel"
-                    }
-                    VpnManager.onConnected(activeConfig, host, country)
+                // Determine exit display info
+                val country = when {
+                    host.contains(".de") || host.contains("germany") -> "Germany"
+                    host.contains(".nl") || host.contains("netherlands") -> "Netherlands"
+                    host.contains(".fi") || host.contains("finland") -> "Finland"
+                    host.contains(".fr") || host.contains("france") -> "France"
+                    host.contains(".us") || host.contains("usa") -> "United States"
+                    host.contains(".uk") || host.contains("london") -> "United Kingdom"
+                    host.contains(".tr") || host.contains("turkey") -> "Turkey"
+                    host.contains(".sg") || host.contains("singapore") -> "Singapore"
+                    else -> "Proxy Tunnel"
+                }
+                VpnManager.onConnected(activeConfig, host, country)
 
-                    // Continuous traffic & stats loop
-                    var lastPingCheck = System.currentTimeMillis()
-                    var currentPing = if (pingMs > 0) pingMs else 85L
+                // ---- REAL stats loop: cumulative counters from the core ----
+                var lastPingCheck = System.currentTimeMillis()
+                var currentPing = PingTester.testTcpPing(host, port, 3000).first
+                if (currentPing <= 0) currentPing = -1L
 
-                    while (isActive) {
-                        delay(1000)
+                var upCum = 0L
+                var downCum = 0L
+                var lastUp = 0L
+                var lastDown = 0L
 
-                        val durationSec = (System.currentTimeMillis() - sessionStartTime) / 1000
+                while (isActive) {
+                    delay(1000)
+                    val durationSec = (System.currentTimeMillis() - sessionStartTime) / 1000
 
-                        // Generate realistic responsive traffic measurements
-                        val baseDown = Random.nextLong(250_000, 1_850_000)
-                        val baseUp = Random.nextLong(45_000, 320_000)
-
-                        totalDownBytes += baseDown
-                        totalUpBytes += baseUp
-
-                        // Periodically check ping
-                        if (System.currentTimeMillis() - lastPingCheck > 10_000) {
-                            lastPingCheck = System.currentTimeMillis()
-                            val (newPing, status) = PingTester.testTcpPing(host, port, 2000)
-                            if (status == PingStatus.SUCCESS && newPing > 0) {
-                                currentPing = newPing
+                    var upDelta = 0L
+                    var downDelta = 0L
+                    try {
+                        // format: "tag,direction,value;tag,direction,value;"
+                        val statsStr = coreController?.queryAllOutboundTrafficStats() ?: ""
+                        for (entry in statsStr.split(";")) {
+                            if (entry.isBlank()) continue
+                            val parts = entry.split(",")
+                            if (parts.size >= 3) {
+                                val value = parts[2].trim().toLongOrNull() ?: continue
+                                val direction = parts[1].trim().lowercase()
+                                if (direction.contains("up")) upCum = value
+                                else if (direction.contains("down")) downCum = value
                             }
                         }
+                        upDelta = (upCum - lastUp).coerceAtLeast(0)
+                        downDelta = (downCum - lastDown).coerceAtLeast(0)
+                        lastUp = upCum
+                        lastDown = downCum
+                    } catch (_: Exception) {}
 
-                        val stats = VpnStats(
-                            uploadSpeedBytesPerSec = baseUp,
-                            downloadSpeedBytesPerSec = baseDown,
-                            totalUploadedBytes = totalUpBytes,
-                            totalDownloadedBytes = totalDownBytes,
-                            connectedDurationSeconds = durationSec,
-                            currentPingMs = currentPing,
-                            publicIp = host,
-                            countryName = country
-                        )
+                    totalUpBytes += upDelta
+                    totalDownBytes += downDelta
 
-                        VpnManager.updateStats(stats)
-                        updateForegroundNotification(
-                            configName,
-                            "↓ ${Formatters.formatSpeed(baseDown)}  ↑ ${Formatters.formatSpeed(baseUp)} | ${Formatters.formatDuration(durationSec)}"
-                        )
+                    // Periodic TCP ping to server as liveness indicator
+                    if (System.currentTimeMillis() - lastPingCheck > 10_000) {
+                        lastPingCheck = System.currentTimeMillis()
+                        val (newPing, status) = PingTester.testTcpPing(host, port, 2000)
+                        if (status == PingStatus.SUCCESS && newPing > 0) currentPing = newPing
                     }
-                } else {
-                    VpnManager.onError("No active configuration found.")
-                    disconnect()
-                }
 
+                    val stats = VpnStats(
+                        uploadSpeedBytesPerSec = upDelta,
+                        downloadSpeedBytesPerSec = downDelta,
+                        totalUploadedBytes = totalUpBytes,
+                        totalDownloadedBytes = totalDownBytes,
+                        connectedDurationSeconds = durationSec,
+                        currentPingMs = currentPing,
+                        publicIp = host,
+                        countryName = country
+                    )
+                    VpnManager.updateStats(stats)
+                    updateForegroundNotification(
+                        configName,
+                        "↓ ${Formatters.formatSpeed(downDelta)}  ↑ ${Formatters.formatSpeed(upDelta)} | ${Formatters.formatDuration(durationSec)}"
+                    )
+
+                    // If core died unexpectedly, surface it
+                    try {
+                        if (coreController?.isRunning == false && isActive) {
+                            VpnManager.onError("Xray core stopped unexpectedly.")
+                            break
+                        }
+                    } catch (_: Exception) {}
+                }
             } catch (e: Exception) {
                 VpnManager.onError("Tunnel exception: ${e.message}")
                 disconnect()
@@ -188,6 +251,10 @@ class LocalVpnService : VpnService() {
     private fun disconnect() {
         serviceJob?.cancel()
         serviceJob = null
+        try {
+            coreController?.stopLoop()
+        } catch (_: Exception) {}
+        coreController = null
         try {
             vpnInterface?.close()
         } catch (_: Exception) {}
