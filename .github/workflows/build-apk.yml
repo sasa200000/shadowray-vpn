@@ -35,6 +35,15 @@ jobs:
             "https://github.com/2dust/AndroidLibXrayLite/releases/download/v26.8.20/libv2ray.aar"
           ls -la app/libs/
 
+      - name: Download geo assets (geoip.dat / geosite.dat) into app assets
+        run: |
+          mkdir -p app/src/main/assets
+          curl -sL -o app/src/main/assets/geoip.dat \
+            "https://github.com/2dust/AndroidLibXrayLite/raw/main/assets/geoip.dat"
+          curl -sL -o app/src/main/assets/geosite.dat \
+            "https://github.com/2dust/AndroidLibXrayLite/raw/main/assets/geosite.dat"
+          ls -la app/src/main/assets/
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 

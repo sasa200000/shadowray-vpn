@@ -24,6 +24,27 @@ class ShadowRayApp : Application() {
         repository = VpnRepository(this, database)
 
         createNotificationChannels()
+        copyGeoAssetsIfNeeded()
+    }
+
+    /**
+     * Copies geoip.dat / geosite.dat from APK assets to filesDir so the Xray core
+     * can find them (asset path is set via xray.location.asset = filesDir).
+     * Skips copy if the file already exists with a plausible size.
+     */
+    private fun copyGeoAssetsIfNeeded() {
+        for (name in listOf("geoip.dat", "geosite.dat")) {
+            try {
+                val out = java.io.File(filesDir, name)
+                if (out.exists() && out.length() > 1_000_000) continue
+                assets.open(name).use { input ->
+                    out.outputStream().use { output -> input.copyTo(output) }
+                }
+            } catch (_: Exception) {
+                // asset missing — routing rules with geoip:/geosite: will fail at start,
+                // but the tunnel itself can still work without them.
+            }
+        }
     }
 
     fun onCoreLibraryLoaded() {

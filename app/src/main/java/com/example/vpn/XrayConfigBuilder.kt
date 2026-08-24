@@ -69,12 +69,23 @@ object XrayConfigBuilder {
                 })
             )
             // Route private/LAN ranges directly (never through the proxy), everything else -> proxy
+            // NOTE: uses explicit CIDR ranges instead of geoip:private so the core can start
+            // even if geoip.dat is missing on the device.
             put("routing", JSONObject().apply {
                 put("domainStrategy", "AsIs")
                 put("rules", JSONArray()
                     .put(JSONObject().apply {
                         put("type", "field")
-                        put("ip", JSONArray().put("geoip:private"))
+                        put("ip", JSONArray()
+                            .put("10.0.0.0/8")
+                            .put("172.16.0.0/12")
+                            .put("192.168.0.0/16")
+                            .put("127.0.0.0/8")
+                            .put("169.254.0.0/16")
+                            .put("224.0.0.0/4")
+                            .put("::1/128")
+                            .put("fc00::/7")
+                        )
                         put("outboundTag", "direct")
                     })
                 )
