@@ -29,13 +29,16 @@ object XrayConfigBuilder {
                 put("loglevel", "warning")
             })
             put("inbounds", JSONArray().put(JSONObject().apply {
-                put("tag", "tun-in")
+                put("tag", "tun")
                 put("protocol", "tun")
-                put("settings", JSONObject())
+                put("settings", JSONObject().apply {
+                    put("name", "xray0")
+                    put("MTU", 1500)
+                    put("userLevel", 8)
+                })
                 put("sniffing", JSONObject().apply {
                     put("enabled", true)
-                    put("destOverride", JSONArray().put("http").put("tls"))
-                    put("routeOnly", false)
+                    put("destOverride", JSONArray().put("http").put("tls").put("quic"))
                 })
             }))
             put("outbounds", JSONArray()
