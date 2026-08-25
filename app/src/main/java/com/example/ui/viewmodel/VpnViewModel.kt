@@ -15,6 +15,7 @@ import com.example.model.ProxyProtocol
 import com.example.model.VpnState
 import com.example.model.VpnStats
 import com.example.parser.ConfigParser
+import com.example.util.AccessKey
 import com.example.util.LocalizationHelper
 import com.example.vpn.VpnManager
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -135,7 +136,8 @@ class VpnViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun importConfigsFromText(text: String, context: Context): Int {
-        val extracted = ConfigParser.extractAllConfigs(text)
+        // Accepts raw URIs, subscription URLs, base64 blobs AND SR- access keys
+        val extracted = AccessKey.resolve(text)
         if (extracted.isNotEmpty()) {
             viewModelScope.launch {
                 val ids = repository.insertConfigs(extracted)

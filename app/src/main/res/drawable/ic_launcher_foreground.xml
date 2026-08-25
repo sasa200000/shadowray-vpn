@@ -1,9 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item
-        android:width="72dp"
-        android:height="72dp"
-        android:drawable="@drawable/app_vpn_icon_1787483220067"
-        android:gravity="center" />
-</layer-list>
-
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Shield with gradient fill, centered, ~46dp tall in safe zone -->
+    <group>
+        <path android:pathData="M54,31 L72,37.5 C72,55 66,66.5 54,74 C42,66.5 36,55 36,37.5 Z">
+            <aapt:attr xmlns:aapt="http://schemas.android.com/aapt" name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="54" android:startY="30"
+                    android:endX="54" android:endY="76">
+                    <item android:offset="0.0" android:color="#FF7C4DFF" />
+                    <item android:offset="1.0" android:color="#FF3F1E96" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <!-- shield border highlight -->
+        <path
+            android:pathData="M54,31 L72,37.5 C72,55 66,66.5 54,74 C42,66.5 36,55 36,37.5 Z"
+            android:strokeColor="#FFE6DCFF"
+            android:strokeWidth="1.6"
+            android:fillColor="#00000000" />
+        <!-- white lightning bolt -->
+        <path
+            android:pathData="M56.2,38.5 L48.5,52.5 L53.4,52.5 L50.8,63.5 L60.2,48.6 L54.9,48.6 Z"
+            android:fillColor="#FFFFFFFF" />
+    </group>
+</vector>

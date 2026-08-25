@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.QrCode
 import androidx.compose.material.icons.filled.RssFeed
+import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
@@ -100,6 +101,7 @@ fun AddConfigDialog(
     var subUrl by remember { mutableStateOf("") }
 
     val tabTitles = listOf(
+        Pair(LocalizationHelper.getString("tab_key", language), Icons.Default.VpnKey),
         Pair(LocalizationHelper.getString("tab_clipboard", language), Icons.Default.ContentPaste),
         Pair(LocalizationHelper.getString("tab_qr", language), Icons.Default.QrCode),
         Pair(LocalizationHelper.getString("tab_manual", language), Icons.Default.Build),
@@ -195,6 +197,68 @@ fun AddConfigDialog(
                 ) {
                     when (selectedTab) {
                         0 -> {
+                            // Access Key input (SR-XXXXX-XXXXX)
+                            var keyInput by remember { mutableStateOf("") }
+                            Text(
+                                text = LocalizationHelper.getString("key_hint", language),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            OutlinedTextField(
+                                value = keyInput,
+                                onValueChange = { keyInput = it.uppercase() },
+                                placeholder = { Text("SR-XXXXX-XXXXX-XXXXX") },
+                                singleLine = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("input_access_key"),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = NeonCyan,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                                )
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        clipboardManager.getText()?.let {
+                                            keyInput = it.text.uppercase()
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.ContentPaste, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(LocalizationHelper.getString("paste", language), color = MaterialTheme.colorScheme.onSurface)
+                                }
+
+                                Button(
+                                    onClick = {
+                                        if (keyInput.isNotBlank()) {
+                                            onImportText(keyInput)
+                                            onDismiss()
+                                        }
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = ElectricEmerald),
+                                    enabled = keyInput.isNotBlank(),
+                                    modifier = Modifier.weight(1f).testTag("btn_confirm_key")
+                                ) {
+                                    Icon(Icons.Default.VpnKey, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(LocalizationHelper.getString("key_activate", language), color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+
+                        1 -> {
                             // Clipboard / Text input
                             Text(
                                 text = "Paste single or multiple vless://, vmess://, trojan://, ss:// URIs:",
@@ -254,7 +318,7 @@ fun AddConfigDialog(
                             }
                         }
 
-                        1 -> {
+                        2 -> {
                             // QR Scanner / Input
                             Text(
                                 text = "Scan or paste QR Code content string:",
@@ -293,7 +357,7 @@ fun AddConfigDialog(
                             }
                         }
 
-                        2 -> {
+                        3 -> {
                             // Manual Builder
                             ExposedDropdownMenuBox(
                                 expanded = manualExpandedProtocol,
@@ -452,7 +516,7 @@ fun AddConfigDialog(
                             }
                         }
 
-                        3 -> {
+                        4 -> {
                             // Subscription Link
                             Text(
                                 text = "Enter subscription URL providing auto-updating server configurations:",

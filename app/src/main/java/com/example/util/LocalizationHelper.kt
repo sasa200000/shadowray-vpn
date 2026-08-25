@@ -47,6 +47,10 @@ object LocalizationHelper {
             "chip_shadowsocks" -> "Shadowsocks"
             "chip_favorites" -> if (isFa) "نشان‌شده" else "Favorites"
 
+            "tab_key" -> if (isFa) "کلید ورود" else "Access Key"
+            "key_hint" -> if (isFa) "کلید ورودی که دریافت کردی رو وارد کن:" else "Enter the access key you received:"
+            "key_activate" -> if (isFa) "فعال‌سازی" else "Activate"
+            "paste" -> if (isFa) "چسباندن" else "Paste"
             "tab_clipboard" -> if (isFa) "از کلیپ‌بورد / متن" else "From Clipboard"
             "tab_qr" -> if (isFa) "اسکن بارکد QR" else "QR Scanner"
             "tab_manual" -> if (isFa) "ساخت دستی" else "Manual Builder"
