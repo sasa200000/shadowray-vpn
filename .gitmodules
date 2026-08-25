@@ -4,3 +4,15 @@
 [submodule "hev-socks5-tunnel"]
 	path = hev-socks5-tunnel
 	url = https://github.com/heiher/hev-socks5-tunnel
+[submodule "hev-socks5-tunnel/src/core"]
+	path = hev-socks5-tunnel/src/core
+	url = https://github.com/heiher/hev-socks5-core
+[submodule "hev-socks5-tunnel/third-part/hev-task-system"]
+	path = hev-socks5-tunnel/third-part/hev-task-system
+	url = https://github.com/heiher/hev-task-system
+[submodule "hev-socks5-tunnel/third-part/yaml"]
+	path = hev-socks5-tunnel/third-part/yaml
+	url = https://github.com/heiher/yaml
+[submodule "hev-socks5-tunnel/third-part/lwip"]
+	path = hev-socks5-tunnel/third-part/lwip
+	url = https://github.com/lwip-tcpip/lwip
